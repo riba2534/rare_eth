@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/skip2/go-qrcode"
@@ -30,7 +31,7 @@ func generateWalletWithPrefixSuffix(ctx context.Context, prefix, suffix string, 
 		default:
 			privateKey := genETHWallet()
 			address := crypto.PubkeyToAddress(privateKey.PublicKey)
-			addressStr := strings.ToLower(address.Hex()[2:])
+			addressStr := address.Hex()[2:]
 
 			if strings.HasPrefix(addressStr, prefix) && strings.HasSuffix(addressStr, suffix) {
 				select {
@@ -51,7 +52,7 @@ func printQRCode(text string) {
 		return
 	}
 
-	fmt.Println("二维码:")
+	fmt.Println("私钥二维码:")
 	fmt.Println(qr.ToSmallString(false))
 }
 
@@ -64,6 +65,7 @@ func main() {
 		Short: "ETH 钱包靓号生成器，可以指定钱包地址的 前缀 和 后缀，支持指定线程数",
 		Long:  "ETH 钱包靓号生成器，可以指定钱包地址的 前缀 和 后缀，支持指定线程数\n在指定前缀和后缀的时候注意字母必须为 A-F 之间的字母，数字无要求",
 		Run: func(cmd *cobra.Command, args []string) {
+			startTime := time.Now()
 			ctx, cancel := context.WithCancel(context.Background())
 			found := make(chan *ecdsa.PrivateKey)
 			var wg sync.WaitGroup
@@ -75,7 +77,6 @@ func main() {
 					wg.Done()
 				}()
 			}
-
 			privateKey := <-found
 			address := crypto.PubkeyToAddress(privateKey.PublicKey)
 			privateKeyHex := hex.EncodeToString(crypto.FromECDSA(privateKey))
@@ -87,6 +88,12 @@ func main() {
 
 			cancel()
 			wg.Wait()
+			duration := time.Since(startTime)
+
+			hours := int(duration.Hours())
+			minutes := int(duration.Minutes()) % 60
+			seconds := int(duration.Seconds()) % 60
+			fmt.Printf("本次执行花费时间：%dh %dm %ds\n", hours, minutes, seconds)
 		},
 	}
 

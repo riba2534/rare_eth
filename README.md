@@ -40,6 +40,8 @@
 
 我们得到了一个 888 开头 888 结尾的靓号 💯
 
+> 你的前后缀要求越高，程序计算越慢，如果你想要 8个8 这种靓号，推荐 s使用 tmux 或者  screen  这种工具在服务器后台慢慢跑，直到跑出你想要的结果
+
 ## 兼容性
 
 ETH 靓号生成器生成的 ETH 靓号地址均符合 ERC-20 标准，支持 Ethereum、BSC、HECO、Polygon、OKEx、Fantom、Optimism、Avalanche 等网络。

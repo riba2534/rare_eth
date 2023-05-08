@@ -62,6 +62,7 @@ func main() {
 	var rootCmd = &cobra.Command{
 		Use:   "./rare_eth",
 		Short: "ETH 钱包靓号生成器，可以指定钱包地址的 前缀 和 后缀，支持指定线程数",
+		Long:  "ETH 钱包靓号生成器，可以指定钱包地址的 前缀 和 后缀，支持指定线程数\n在指定前缀和后缀的时候注意字母必须为 A-F 之间的字母，数字无要求",
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx, cancel := context.WithCancel(context.Background())
 			found := make(chan *ecdsa.PrivateKey)
@@ -91,7 +92,7 @@ func main() {
 
 	rootCmd.Flags().StringVarP(&prefix, "prefix", "p", "", "需要的钱包地址的前缀, 不指定则为不限制")
 	rootCmd.Flags().StringVarP(&suffix, "suffix", "s", "", "需要的钱包地址的后缀, 不指定则为不限制")
-	rootCmd.Flags().IntVarP(&numGoroutines, "numGoroutines", "n", 100, "线程数量, 不指定默认为  100")
+	rootCmd.Flags().IntVarP(&numGoroutines, "numGoroutines", "n", 100, "线程数量, 不指定默认为 100")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)

@@ -6,15 +6,15 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/skip2/go-qrcode"
+	"github.com/spf13/cobra"
 )
 
-func randomKey() *ecdsa.PrivateKey {
+func genETHWallet() *ecdsa.PrivateKey {
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
 		panic(err)
@@ -28,7 +28,7 @@ func generateWalletWithPrefixSuffix(ctx context.Context, prefix, suffix string, 
 		case <-ctx.Done():
 			return
 		default:
-			privateKey := randomKey()
+			privateKey := genETHWallet()
 			address := crypto.PubkeyToAddress(privateKey.PublicKey)
 			addressStr := strings.ToLower(address.Hex()[2:])
 
@@ -56,40 +56,45 @@ func printQRCode(text string) {
 }
 
 func main() {
-	if len(os.Args) < 4 {
-		fmt.Println("Usage: <prefix> <suffix> <num_goroutines>")
-		return
+	var prefix, suffix string
+	var numGoroutines int
+
+	var rootCmd = &cobra.Command{
+		Use:   "./rare_eth",
+		Short: "ETH 钱包靓号生成器，可以指定钱包地址的 前缀 和 后缀，支持指定线程数",
+		Run: func(cmd *cobra.Command, args []string) {
+			ctx, cancel := context.WithCancel(context.Background())
+			found := make(chan *ecdsa.PrivateKey)
+			var wg sync.WaitGroup
+
+			for i := 0; i < numGoroutines; i++ {
+				wg.Add(1)
+				go func() {
+					generateWalletWithPrefixSuffix(ctx, prefix, suffix, found)
+					wg.Done()
+				}()
+			}
+
+			privateKey := <-found
+			address := crypto.PubkeyToAddress(privateKey.PublicKey)
+			privateKeyHex := hex.EncodeToString(crypto.FromECDSA(privateKey))
+
+			fmt.Printf("找到了满足条件的钱包地址：%s\n", address.Hex())
+			fmt.Printf("对应的私钥是：%s\n", privateKeyHex)
+
+			printQRCode(privateKeyHex)
+
+			cancel()
+			wg.Wait()
+		},
 	}
 
-	prefix := os.Args[1]
-	suffix := os.Args[2]
-	numGoroutines, err := strconv.Atoi(os.Args[3])
-	if err != nil || numGoroutines < 1 {
-		fmt.Println("Error: num_goroutines must be a positive integer")
-		return
+	rootCmd.Flags().StringVarP(&prefix, "prefix", "p", "", "需要的钱包地址的前缀, 不指定则为不限制")
+	rootCmd.Flags().StringVarP(&suffix, "suffix", "s", "", "需要的钱包地址的后缀, 不指定则为不限制")
+	rootCmd.Flags().IntVarP(&numGoroutines, "numGoroutines", "n", 100, "线程数量, 不指定默认为  100")
+
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	found := make(chan *ecdsa.PrivateKey)
-	var wg sync.WaitGroup
-
-	for i := 0; i < numGoroutines; i++ {
-		wg.Add(1)
-		go func() {
-			generateWalletWithPrefixSuffix(ctx, prefix, suffix, found)
-			wg.Done()
-		}()
-	}
-
-	privateKey := <-found
-	address := crypto.PubkeyToAddress(privateKey.PublicKey)
-	privateKeyHex := hex.EncodeToString(crypto.FromECDSA(privateKey))
-
-	fmt.Printf("找到了满足条件的钱包地址：%s\n", address.Hex())
-	fmt.Printf("对应的私钥是：%s\n", privateKeyHex)
-
-	printQRCode(privateKeyHex)
-
-	cancel()
-	wg.Wait()
 }
